@@ -46,10 +46,11 @@ jobs:
           echo "gradlew execution script verified."
         fi
 
-    - name: Setup and Execute Build
+    - name: Setup Gradle Cache and Environment
       uses: gradle/actions/setup-gradle@v4
-      with:
-        arguments: assembleDebug
+
+    - name: Compile production APK
+      run: ./gradlew assembleDebug
 
     - name: Upload Finished APK
       uses: actions/upload-artifact@v4
