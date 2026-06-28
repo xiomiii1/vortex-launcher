@@ -1,0 +1,44 @@
+name: Mobile Cloud Build Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # Allows you to manually click "Run workflow" if needed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Extract Project Files
+      run: |
+        if [ -f "vortex-launcher.zip" ]; then
+          echo "Zip file found! Extracting contents..."
+          unzip -o vortex-launcher.zip
+          rm vortex-launcher.zip # Clean up zip to save space
+        else
+          echo "Error: vortex-launcher.zip not found in the root directory!"
+          exit 1
+        fi
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant Execute Permission for Gradle
+      run: chmod +x gradlew
+
+    - name: Compile production APK
+      run: ./gradlew assembleDebug
+
+    - name: Upload Finished APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: Vortex-Launcher-Build
+        path: app/build/outputs/apk/debug/app-debug.apk
