@@ -3,7 +3,7 @@ name: Mobile Cloud Build Pipeline
 on:
   push:
     branches: [ "main", "master" ]
-  workflow_dispatch: # Allows you to manually click "Run workflow" if needed
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,10 +18,17 @@ jobs:
         if [ -f "vortex-launcher.zip" ]; then
           echo "Zip file found! Extracting contents..."
           unzip -o vortex-launcher.zip
-          rm vortex-launcher.zip # Clean up zip to save space
+          rm vortex-launcher.zip
+          
+          # Fix Folder Nesting: If files were zipped inside a parent folder, move them out
+          if [ -d "vortex-launcher" ]; then
+            echo "Detected nested folder structure. Moving files to root workspace..."
+            mv vortex-launcher/* . 2>/dev/null || true
+            mv vortex-launcher/.* . 2>/dev/null || true
+            rmdir vortex-launcher
+          fi
         else
-          echo "Error: vortex-launcher.zip not found in the root directory!"
-          exit 1
+          echo "No zip file found, executing baseline repository scan."
         fi
 
     - name: Set up JDK 17
@@ -29,13 +36,20 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
 
-    - name: Grant Execute Permission for Gradle
-      run: chmod +x gradlew
+    - name: Auto-Generate Gradle Wrapper if Missing
+      run: |
+        if [ ! -f "gradlew" ]; then
+          echo "gradlew is missing! Generating build wrapper scripts natively..."
+          gradle wrapper --gradle-version 8.5
+        else
+          echo "gradlew execution script verified."
+        fi
 
-    - name: Compile production APK
-      run: ./gradlew assembleDebug
+    - name: Setup and Execute Build
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        arguments: assembleDebug
 
     - name: Upload Finished APK
       uses: actions/upload-artifact@v4
